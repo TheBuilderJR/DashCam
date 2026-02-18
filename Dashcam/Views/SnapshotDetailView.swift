@@ -20,7 +20,7 @@ struct PlayerViewRepresentable: NSViewRepresentable {
 struct SnapshotDetailView: View {
     let snapshot: Snapshot
     @EnvironmentObject var appState: AppState
-    @State private var player: AVQueuePlayer?
+    @State private var player: AVPlayer?
     @State private var playerReady = false
     @State private var exportMessage: String?
     @State private var clipboardEvents: [ClipboardEvent] = []
@@ -124,16 +124,32 @@ struct SnapshotDetailView: View {
     }
 
     private func setupPlayer() {
-        let items = snapshot.segments.compactMap { segment -> AVPlayerItem? in
+        let composition = AVMutableComposition()
+        var insertTime = CMTime.zero
+
+        for segment in snapshot.segments {
             let url = snapshot.directory.appendingPathComponent(segment.filename)
-            guard FileManager.default.fileExists(atPath: url.path) else { return nil }
-            return AVPlayerItem(url: url)
+            guard FileManager.default.fileExists(atPath: url.path) else { continue }
+            let asset = AVURLAsset(url: url)
+            let duration = asset.duration
+            guard duration > .zero else { continue }
+            do {
+                try composition.insertTimeRange(
+                    CMTimeRange(start: .zero, duration: duration),
+                    of: asset,
+                    at: insertTime
+                )
+                insertTime = CMTimeAdd(insertTime, duration)
+            } catch {
+                continue
+            }
         }
-        guard !items.isEmpty else { return }
-        let queuePlayer = AVQueuePlayer(items: items)
-        self.player = queuePlayer
+
+        guard insertTime > .zero else { return }
+        let avPlayer = AVPlayer(playerItem: AVPlayerItem(asset: composition))
+        self.player = avPlayer
         self.playerReady = true
-        queuePlayer.play()
+        avPlayer.play()
     }
 
     private func exportSnapshot() {
