@@ -56,6 +56,32 @@ struct MenuBarView: View {
             }
             .keyboardShortcut("r", modifiers: [.command])
 
+            // Audio Sources
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Audio Sources")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+
+                Toggle("System Audio", isOn: $appState.captureSystemAudio)
+                    .font(.caption)
+                    .disabled(appState.isRecording)
+
+                Toggle("Microphone", isOn: $appState.captureMicrophone)
+                    .font(.caption)
+                    .disabled(appState.isRecording || !appState.microphoneGranted)
+
+                if appState.captureMicrophone && !appState.availableMicrophones.isEmpty {
+                    Picker("Input:", selection: $appState.selectedMicrophoneID) {
+                        ForEach(appState.availableMicrophones, id: \.uniqueID) { device in
+                            Text(device.localizedName).tag(device.uniqueID)
+                        }
+                    }
+                    .font(.caption)
+                    .labelsHidden()
+                    .disabled(appState.isRecording)
+                }
+            }
+
             // Snapshot
             HStack {
                 Button("Take Snapshot") {

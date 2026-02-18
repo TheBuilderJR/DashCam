@@ -6,6 +6,8 @@ import ScreenCaptureKit
 final class ScreenRecorder: NSObject, ObservableObject, SCStreamOutput, SCStreamDelegate {
     @Published var isRecording = false
 
+    var captureSystemAudio: Bool = true
+
     private var stream: SCStream?
 
     private let outputWidth = 1920
@@ -40,15 +42,18 @@ final class ScreenRecorder: NSObject, ObservableObject, SCStreamOutput, SCStream
         config.minimumFrameInterval = CMTime(value: 1, timescale: CMTimeScale(fps))
         config.pixelFormat = kCVPixelFormatType_32BGRA
         config.showsCursor = true
-        config.capturesAudio = true
-        config.sampleRate = 44100
-        config.channelCount = 2
+        config.capturesAudio = captureSystemAudio
+        if captureSystemAudio {
+            config.sampleRate = 48000
+            config.channelCount = 2
+        }
 
         let scStream = SCStream(filter: filter, configuration: config, delegate: self)
 
-        // Register self as output for both video and audio
         try scStream.addStreamOutput(self, type: .screen, sampleHandlerQueue: videoQueue)
-        try scStream.addStreamOutput(self, type: .audio, sampleHandlerQueue: audioQueue)
+        if captureSystemAudio {
+            try scStream.addStreamOutput(self, type: .audio, sampleHandlerQueue: audioQueue)
+        }
 
         try await scStream.startCapture()
         self.stream = scStream

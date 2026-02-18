@@ -9,6 +9,16 @@ final class AppState: ObservableObject {
     @Published var statusText = "Idle"
     @Published var snapshotDuration: TimeInterval = 300
 
+    @Published var captureSystemAudio: Bool = true
+    @Published var captureMicrophone: Bool = true
+
+    @Published var availableMicrophones: [AVCaptureDevice] = []
+    @Published var selectedMicrophoneID: String = "" {
+        didSet {
+            UserDefaults.standard.set(selectedMicrophoneID, forKey: "selectedMicrophoneID")
+        }
+    }
+
     @Published var screenRecordingGranted = false
     @Published var microphoneGranted = false
 
@@ -20,6 +30,25 @@ final class AppState: ObservableObject {
         screenRecordingGranted = CGPreflightScreenCaptureAccess()
         let status = AVCaptureDevice.authorizationStatus(for: .audio)
         microphoneGranted = status == .authorized
+        refreshMicrophones()
+    }
+
+    func refreshMicrophones() {
+        availableMicrophones = MicrophoneCapturer.availableDevices()
+
+        // Restore saved selection, or fall back to system default
+        let savedID = UserDefaults.standard.string(forKey: "selectedMicrophoneID") ?? ""
+        if availableMicrophones.contains(where: { $0.uniqueID == savedID }) {
+            selectedMicrophoneID = savedID
+        } else if let defaultMic = AVCaptureDevice.default(for: .audio) {
+            selectedMicrophoneID = defaultMic.uniqueID
+        } else if let first = availableMicrophones.first {
+            selectedMicrophoneID = first.uniqueID
+        }
+    }
+
+    var selectedMicrophone: AVCaptureDevice? {
+        availableMicrophones.first { $0.uniqueID == selectedMicrophoneID }
     }
 
     func requestMicrophoneAccess() {
@@ -42,12 +71,17 @@ final class AppState: ObservableObject {
     let clipboardMonitor = ClipboardMonitor()
     let snapshotManager = SnapshotManager()
     let videoExporter = VideoExporter()
+    let microphoneCapturer = MicrophoneCapturer()
 
     func startRecording() {
         Task {
             do {
                 // Wire up dependencies
                 screenRecorder.ringBufferManager = ringBufferManager
+                screenRecorder.captureSystemAudio = captureSystemAudio
+
+                ringBufferManager.captureSystemAudio = captureSystemAudio
+                ringBufferManager.captureMicrophone = captureMicrophone
 
                 clipboardMonitor.onClipboardChange = { [weak self] event in
                     self?.ringBufferManager.addClipboardEvent(event)
@@ -57,6 +91,18 @@ final class AppState: ObservableObject {
                 try ringBufferManager.start()
                 try await screenRecorder.start()
                 clipboardMonitor.start()
+
+                // Start microphone capture if enabled
+                if captureMicrophone {
+                    microphoneCapturer.onMicSample = { [weak self] sampleBuffer in
+                        self?.ringBufferManager.appendMicSample(sampleBuffer)
+                    }
+                    do {
+                        try microphoneCapturer.start(device: selectedMicrophone)
+                    } catch {
+                        print("[AppState] Mic capture failed: \(error)")
+                    }
+                }
 
                 isRecording = true
                 statusText = "Recording"
@@ -72,6 +118,7 @@ final class AppState: ObservableObject {
 
     func stopRecording() {
         Task {
+            microphoneCapturer.stop()
             await screenRecorder.stop()
             ringBufferManager.stop()
             clipboardMonitor.stop()

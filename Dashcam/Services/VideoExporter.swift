@@ -8,12 +8,14 @@ final class VideoExporter: ObservableObject {
 
     func export(snapshot: Snapshot, completion: @escaping (Result<URL, Error>) -> Void) {
         let composition = AVMutableComposition()
-        guard let videoTrack = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid),
-              let audioTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
+        guard let videoTrack = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid)
         else {
             completion(.failure(ExportError.compositionFailed))
             return
         }
+
+        // Lazily created composition audio tracks — one per source track index
+        var compositionAudioTracks: [AVMutableCompositionTrack] = []
 
         var currentTime = CMTime.zero
 
@@ -26,10 +28,20 @@ final class VideoExporter: ObservableObject {
                     let duration = asset.duration
                     try videoTrack.insertTimeRange(CMTimeRange(start: .zero, duration: duration), of: srcVideo, at: currentTime)
                 }
-                if let srcAudio = asset.tracks(withMediaType: .audio).first {
+
+                let audioTracks = asset.tracks(withMediaType: .audio)
+                for (index, srcAudio) in audioTracks.enumerated() {
+                    // Grow composition audio tracks as needed
+                    while compositionAudioTracks.count <= index {
+                        guard let newTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid) else {
+                            continue
+                        }
+                        compositionAudioTracks.append(newTrack)
+                    }
                     let duration = asset.duration
-                    try audioTrack.insertTimeRange(CMTimeRange(start: .zero, duration: duration), of: srcAudio, at: currentTime)
+                    try compositionAudioTracks[index].insertTimeRange(CMTimeRange(start: .zero, duration: duration), of: srcAudio, at: currentTime)
                 }
+
                 currentTime = CMTimeAdd(currentTime, asset.duration)
             } catch {
                 print("[VideoExporter] Failed to insert segment: \(error)")

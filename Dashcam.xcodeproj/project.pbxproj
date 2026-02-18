@@ -20,6 +20,7 @@
 		A10013 /* SnapshotListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10013 /* SnapshotListView.swift */; };
 		A10014 /* SnapshotDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10014 /* SnapshotDetailView.swift */; };
 		A10015 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10015 /* Assets.xcassets */; };
+		A10020 /* MicrophoneCapturer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10020 /* MicrophoneCapturer.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +39,7 @@
 		B10015 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B10016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B10017 /* Dashcam.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Dashcam.entitlements; sourceTree = "<group>"; };
+		B10020 /* MicrophoneCapturer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicrophoneCapturer.swift; sourceTree = "<group>"; };
 		P10001 /* Dashcam.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Dashcam.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -83,6 +85,7 @@
 				B10006 /* ClipboardMonitor.swift */,
 				B10007 /* SnapshotManager.swift */,
 				B10008 /* VideoExporter.swift */,
+				B10020 /* MicrophoneCapturer.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -195,6 +198,7 @@
 				A10012 /* MenuBarView.swift in Sources */,
 				A10013 /* SnapshotListView.swift in Sources */,
 				A10014 /* SnapshotDetailView.swift in Sources */,
+				A10020 /* MicrophoneCapturer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

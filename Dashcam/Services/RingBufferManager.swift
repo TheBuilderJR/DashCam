@@ -10,9 +10,13 @@ final class RingBufferManager {
     private let segmentDuration: TimeInterval = 300 // 5 minutes
     private let maxSegments = 24 // 2 hours total
 
+    var captureSystemAudio: Bool = true
+    var captureMicrophone: Bool = true
+
     private var assetWriter: AVAssetWriter?
     private var videoInput: AVAssetWriterInput?
     private var audioInput: AVAssetWriterInput?
+    private var micInput: AVAssetWriterInput?
     private var pixelBufferAdaptor: AVAssetWriterInputPixelBufferAdaptor?
 
     private var currentSegmentURL: URL?
@@ -70,6 +74,12 @@ final class RingBufferManager {
     func appendAudioSample(_ sampleBuffer: CMSampleBuffer) {
         writerQueue.async { [weak self] in
             self?._appendAudioSample(sampleBuffer)
+        }
+    }
+
+    func appendMicSample(_ sampleBuffer: CMSampleBuffer) {
+        writerQueue.async { [weak self] in
+            self?._appendMicSample(sampleBuffer)
         }
     }
 
@@ -149,6 +159,13 @@ final class RingBufferManager {
         input.append(sampleBuffer)
     }
 
+    private func _appendMicSample(_ sampleBuffer: CMSampleBuffer) {
+        guard isWriting, sessionStarted,
+              let writer = assetWriter, writer.status == .writing,
+              let input = micInput, input.isReadyForMoreMediaData else { return }
+        input.append(sampleBuffer)
+    }
+
     private func startNewSegment() throws {
         let segmentID = UUID()
         let filename = "\(segmentID.uuidString).mov"
@@ -180,24 +197,45 @@ final class RingBufferManager {
             sourcePixelBufferAttributes: adaptorAttributes
         )
 
-        // Audio input
-        let audioSettings: [String: Any] = [
-            AVFormatIDKey: kAudioFormatMPEG4AAC,
-            AVSampleRateKey: 44100,
-            AVNumberOfChannelsKey: 2,
-            AVEncoderBitRateKey: 128_000,
-        ]
-        let aInput = AVAssetWriterInput(mediaType: .audio, outputSettings: audioSettings)
-        aInput.expectsMediaDataInRealTime = true
-
         writer.add(vInput)
-        writer.add(aInput)
+
+        // System audio input (conditional)
+        var aInput: AVAssetWriterInput?
+        if captureSystemAudio {
+            let audioSettings: [String: Any] = [
+                AVFormatIDKey: kAudioFormatMPEG4AAC,
+                AVSampleRateKey: 48000,
+                AVNumberOfChannelsKey: 2,
+                AVEncoderBitRateKey: 128_000,
+            ]
+            let input = AVAssetWriterInput(mediaType: .audio, outputSettings: audioSettings)
+            input.expectsMediaDataInRealTime = true
+            writer.add(input)
+            aInput = input
+        }
+
+        // Microphone audio input (conditional)
+        var mInput: AVAssetWriterInput?
+        if captureMicrophone {
+            let micSettings: [String: Any] = [
+                AVFormatIDKey: kAudioFormatMPEG4AAC,
+                AVSampleRateKey: 48000,
+                AVNumberOfChannelsKey: 2,
+                AVEncoderBitRateKey: 128_000,
+            ]
+            let input = AVAssetWriterInput(mediaType: .audio, outputSettings: micSettings)
+            input.expectsMediaDataInRealTime = true
+            writer.add(input)
+            mInput = input
+        }
+
         writer.startWriting()
         // Don't startSession here — defer to first video frame for correct timestamps
 
         self.assetWriter = writer
         self.videoInput = vInput
         self.audioInput = aInput
+        self.micInput = mInput
         self.pixelBufferAdaptor = adaptor
         self.currentSegmentURL = url
         self.currentSegmentID = segmentID
@@ -224,6 +262,7 @@ final class RingBufferManager {
 
         videoInput?.markAsFinished()
         audioInput?.markAsFinished()
+        micInput?.markAsFinished()
 
         let semaphore = DispatchSemaphore(value: 0)
         writer.finishWriting {
