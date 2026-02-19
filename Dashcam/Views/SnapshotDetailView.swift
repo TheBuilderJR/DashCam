@@ -36,8 +36,8 @@ struct SnapshotDetailView: View {
                     .fill(Color.black)
                     .frame(minHeight: 300)
                     .overlay {
-                        if snapshot.segments.isEmpty {
-                            Text("No video segments")
+                        if snapshot.segments.isEmpty || playerReady {
+                            Text("No video content")
                                 .foregroundStyle(.white)
                         } else {
                             ProgressView("Loading...")
@@ -148,7 +148,10 @@ struct SnapshotDetailView: View {
             }
         }
 
-        guard insertTime > .zero else { return }
+        guard insertTime > .zero else {
+            playerReady = true  // Stop showing "Loading...", body will show "No video segments"
+            return
+        }
         let avPlayer = AVPlayer(playerItem: AVPlayerItem(asset: composition))
         self.player = avPlayer
         self.playerReady = true

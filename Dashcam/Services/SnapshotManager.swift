@@ -17,13 +17,14 @@ final class SnapshotManager: ObservableObject {
 
     func createSnapshot(from ringBuffer: RingBufferManager, maxDuration: TimeInterval) -> Snapshot? {
         let allSegments = ringBuffer.flushAndGetSegments()
-        guard !allSegments.isEmpty else {
-            print("[SnapshotManager] No segments to snapshot")
+        let nonEmpty = allSegments.filter { $0.duration > 0 }
+        guard !nonEmpty.isEmpty else {
+            print("[SnapshotManager] No segments with content to snapshot")
             return nil
         }
 
         // Keep only the most recent segments that fit within maxDuration
-        let sorted = allSegments.sorted { $0.startTime > $1.startTime }
+        let sorted = nonEmpty.sorted { $0.startTime > $1.startTime }
         var accumulated: TimeInterval = 0
         var selected: [SegmentInfo] = []
         for segment in sorted {
