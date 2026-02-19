@@ -23,6 +23,7 @@ final class RingBufferManager {
     private var currentSegmentID: UUID?
     private var segmentStartTime: Date?
     private var segmentStartPTS: CMTime?
+    private var lastVideoPTS: CMTime?
     private var sessionStarted = false
     private var isWriting = false
     private var videoFrameCount = 0
@@ -142,6 +143,7 @@ final class RingBufferManager {
             }
             return
         }
+        lastVideoPTS = presentationTime
         let ok = adaptor.append(pixelBuffer, withPresentationTime: presentationTime)
         videoFrameCount += 1
         if !ok {
@@ -241,6 +243,7 @@ final class RingBufferManager {
         self.currentSegmentID = segmentID
         self.segmentStartTime = Date()
         self.segmentStartPTS = nil
+        self.lastVideoPTS = nil
         self.sessionStarted = false
         self.isWriting = true
         self.videoFrameCount = 0
@@ -272,11 +275,19 @@ final class RingBufferManager {
 
         // Write sidecar
         if let segmentID = currentSegmentID, let startTime = segmentStartTime {
+            // Compute actual media duration from PTS (immune to system sleep)
+            let ptsDuration: TimeInterval
+            if let startPTS = segmentStartPTS, let endPTS = lastVideoPTS {
+                ptsDuration = CMTimeGetSeconds(CMTimeSubtract(endPTS, startPTS))
+            } else {
+                ptsDuration = 0
+            }
+
             var sidecar = currentSidecar
             sidecar = SegmentSidecar(
                 segmentID: segmentID,
                 startTime: startTime,
-                endTime: Date(),
+                endTime: startTime.addingTimeInterval(ptsDuration),
                 clipboardEvents: sidecar.clipboardEvents
             )
             let sidecarURL = Self.bufferDirectory.appendingPathComponent("\(segmentID.uuidString).json")
@@ -286,13 +297,12 @@ final class RingBufferManager {
 
             // Notify
             if let url = currentSegmentURL {
-                let duration = sidecar.endTime.timeIntervalSince(sidecar.startTime)
                 let info = SegmentInfo(
                     id: segmentID,
                     filename: url.lastPathComponent,
                     sidecarFilename: "\(segmentID.uuidString).json",
                     startTime: startTime,
-                    duration: duration
+                    duration: ptsDuration
                 )
                 onSegmentCompleted?(info)
             }
@@ -342,17 +352,28 @@ final class RingBufferManager {
                 let stem = url.deletingPathExtension().lastPathComponent
                 guard let segmentID = UUID(uuidString: stem) else { return nil }
                 let sidecarURL = url.deletingPathExtension().appendingPathExtension("json")
-                let duration: TimeInterval
+
                 let startTime: Date
+                let duration: TimeInterval
+
                 if let data = try? Data(contentsOf: sidecarURL),
                    let sidecar = try? JSONDecoder().decode(SegmentSidecar.self, from: data)
                 {
-                    duration = sidecar.endTime.timeIntervalSince(sidecar.startTime)
                     startTime = sidecar.startTime
+                    // Sidecar duration is computed from PTS (immune to absolute PTS offset in .mov container)
+                    duration = sidecar.endTime.timeIntervalSince(sidecar.startTime)
                 } else {
-                    duration = 0
+                    // Fallback: use the video track's actual time range (immune to PTS offset)
+                    let asset = AVURLAsset(url: url)
+                    if let videoTrack = asset.tracks(withMediaType: .video).first {
+                        let trackDuration = CMTimeGetSeconds(videoTrack.timeRange.duration)
+                        duration = trackDuration.isFinite && trackDuration > 0 ? trackDuration : 0
+                    } else {
+                        duration = 0
+                    }
                     startTime = (try? url.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? Date()
                 }
+
                 return SegmentInfo(
                     id: segmentID,
                     filename: url.lastPathComponent,

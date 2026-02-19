@@ -24,10 +24,13 @@ final class VideoExporter: ObservableObject {
             let asset = AVURLAsset(url: url)
 
             do {
-                if let srcVideo = asset.tracks(withMediaType: .video).first {
-                    let duration = asset.duration
-                    try videoTrack.insertTimeRange(CMTimeRange(start: .zero, duration: duration), of: srcVideo, at: currentTime)
-                }
+                // Use the video track's actual time range to skip any leading gap
+                // caused by absolute PTS offset in the .mov container
+                guard let srcVideo = asset.tracks(withMediaType: .video).first else { continue }
+                let timeRange = srcVideo.timeRange
+                guard timeRange.duration > .zero else { continue }
+
+                try videoTrack.insertTimeRange(timeRange, of: srcVideo, at: currentTime)
 
                 let audioTracks = asset.tracks(withMediaType: .audio)
                 for (index, srcAudio) in audioTracks.enumerated() {
@@ -38,11 +41,10 @@ final class VideoExporter: ObservableObject {
                         }
                         compositionAudioTracks.append(newTrack)
                     }
-                    let duration = asset.duration
-                    try compositionAudioTracks[index].insertTimeRange(CMTimeRange(start: .zero, duration: duration), of: srcAudio, at: currentTime)
+                    try compositionAudioTracks[index].insertTimeRange(timeRange, of: srcAudio, at: currentTime)
                 }
 
-                currentTime = CMTimeAdd(currentTime, asset.duration)
+                currentTime = CMTimeAdd(currentTime, timeRange.duration)
             } catch {
                 print("[VideoExporter] Failed to insert segment: \(error)")
             }

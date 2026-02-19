@@ -131,15 +131,18 @@ struct SnapshotDetailView: View {
             let url = snapshot.directory.appendingPathComponent(segment.filename)
             guard FileManager.default.fileExists(atPath: url.path) else { continue }
             let asset = AVURLAsset(url: url)
-            let duration = asset.duration
-            guard duration > .zero else { continue }
+            // Use the video track's actual time range to skip any leading gap
+            // caused by absolute PTS offset in the .mov container
+            guard let videoTrack = asset.tracks(withMediaType: .video).first else { continue }
+            let timeRange = videoTrack.timeRange
+            guard timeRange.duration > .zero else { continue }
             do {
                 try composition.insertTimeRange(
-                    CMTimeRange(start: .zero, duration: duration),
+                    timeRange,
                     of: asset,
                     at: insertTime
                 )
-                insertTime = CMTimeAdd(insertTime, duration)
+                insertTime = CMTimeAdd(insertTime, timeRange.duration)
             } catch {
                 continue
             }
