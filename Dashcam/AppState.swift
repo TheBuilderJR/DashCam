@@ -107,6 +107,15 @@ final class AppState: ObservableObject {
                 isRecording = true
                 statusText = "Recording"
                 refreshPermissions()
+
+                // Prime the recording pipeline: wait for frames, then
+                // flush and resume so subsequent snapshots work reliably.
+                Task.detached { [weak self] in
+                    try? await Task.sleep(nanoseconds: 1_000_000_000) // 1s
+                    guard let self else { return }
+                    _ = self.ringBufferManager.flushAndGetSegments()
+                    self.ringBufferManager.resume()
+                }
             } catch is ScreenRecorderError {
                 statusText = "Grant Screen Recording in System Settings, then restart"
             } catch {
@@ -140,9 +149,9 @@ final class AppState: ObservableObject {
                 } else {
                     self.statusText = "Snapshot failed"
                 }
-                // Resume recording after flush
+                // Resume recording into a new segment (without clearing buffer)
                 if self.isRecording {
-                    try? self.ringBufferManager.start()
+                    self.ringBufferManager.resume()
                 }
             }
         }

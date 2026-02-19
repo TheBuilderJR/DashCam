@@ -28,6 +28,8 @@ final class RingBufferManager {
     private var isWriting = false
     private var videoFrameCount = 0
     private var droppedFrameCount = 0
+    /// Total frames written across all segments since `start()`. Accessed from main thread.
+    private(set) var totalFramesWritten = 0
 
     private var currentSidecar = SegmentSidecar(
         segmentID: UUID(),
@@ -46,9 +48,12 @@ final class RingBufferManager {
     var onSegmentCompleted: ((SegmentInfo) -> Void)?
 
     func start() throws {
+        totalFramesWritten = 0
         try FileManager.default.createDirectory(at: Self.bufferDirectory, withIntermediateDirectories: true)
         clearBuffer()
-        try startNewSegment()
+        try writerQueue.sync {
+            try startNewSegment()
+        }
     }
 
     /// Remove all segment files from the buffer directory.
@@ -63,6 +68,14 @@ final class RingBufferManager {
     func stop() {
         writerQueue.sync {
             finalizeCurrentSegment()
+        }
+    }
+
+    /// Resume recording into a new segment without clearing the buffer.
+    /// Safe to call while the screen recorder is still delivering frames.
+    func resume() {
+        writerQueue.sync {
+            try? startNewSegment()
         }
     }
 
@@ -146,6 +159,9 @@ final class RingBufferManager {
         lastVideoPTS = presentationTime
         let ok = adaptor.append(pixelBuffer, withPresentationTime: presentationTime)
         videoFrameCount += 1
+        if ok {
+            totalFramesWritten += 1
+        }
         if !ok {
             print("[RingBuffer] adaptor.append FAILED at PTS=\(CMTimeGetSeconds(presentationTime))s, writer status=\(writer.status.rawValue), error=\(writer.error?.localizedDescription ?? "none")")
         } else if videoFrameCount % 60 == 1 {
