@@ -21,6 +21,8 @@
 		A10014 /* SnapshotDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10014 /* SnapshotDetailView.swift */; };
 		A10015 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B10015 /* Assets.xcassets */; };
 		A10020 /* MicrophoneCapturer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10020 /* MicrophoneCapturer.swift */; };
+		A10021 /* CompositionBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10021 /* CompositionBuilder.swift */; };
+		A10022 /* LiveBufferDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10022 /* LiveBufferDetailView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +42,8 @@
 		B10016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B10017 /* Dashcam.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Dashcam.entitlements; sourceTree = "<group>"; };
 		B10020 /* MicrophoneCapturer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicrophoneCapturer.swift; sourceTree = "<group>"; };
+		B10021 /* CompositionBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositionBuilder.swift; sourceTree = "<group>"; };
+		B10022 /* LiveBufferDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveBufferDetailView.swift; sourceTree = "<group>"; };
 		P10001 /* Dashcam.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Dashcam.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -86,6 +90,7 @@
 				B10007 /* SnapshotManager.swift */,
 				B10008 /* VideoExporter.swift */,
 				B10020 /* MicrophoneCapturer.swift */,
+				B10021 /* CompositionBuilder.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -105,6 +110,7 @@
 				B10012 /* MenuBarView.swift */,
 				B10013 /* SnapshotListView.swift */,
 				B10014 /* SnapshotDetailView.swift */,
+				B10022 /* LiveBufferDetailView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -199,6 +205,8 @@
 				A10013 /* SnapshotListView.swift in Sources */,
 				A10014 /* SnapshotDetailView.swift in Sources */,
 				A10020 /* MicrophoneCapturer.swift in Sources */,
+				A10021 /* CompositionBuilder.swift in Sources */,
+				A10022 /* LiveBufferDetailView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -340,8 +348,8 @@
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.dashcam.app;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.dashcam.app.dev;
+				PRODUCT_NAME = "Dashcam Dev";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};

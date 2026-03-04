@@ -2,37 +2,61 @@ import SwiftUI
 
 struct SnapshotListView: View {
     @EnvironmentObject var appState: AppState
-    @State private var selectedSnapshotID: UUID?
+
+    enum SidebarSelection: Hashable {
+        case liveBuffer
+        case snapshot(UUID)
+    }
+
+    @State private var selection: SidebarSelection?
 
     var body: some View {
         NavigationSplitView {
-            List(appState.snapshotManager.snapshots, id: \.id, selection: $selectedSnapshotID) { snapshot in
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(snapshot.createdAt, style: .date)
-                        .font(.headline)
-                    Text(snapshot.createdAt, style: .time)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Text("\(snapshot.segments.count) segments - \(formattedDuration(snapshot.totalDuration))")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
+            List(selection: $selection) {
+                if appState.isRecording {
+                    Label("Live Buffer", systemImage: "record.circle")
+                        .tag(SidebarSelection.liveBuffer)
+                        .foregroundStyle(.red)
                 }
-                .padding(.vertical, 4)
-                .tag(snapshot.id)
-                .contextMenu {
-                    Button("Delete", role: .destructive) {
-                        appState.snapshotManager.deleteSnapshot(snapshot)
+
+                Section("Snapshots") {
+                    ForEach(appState.snapshotManager.snapshots, id: \.id) { snapshot in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(snapshot.createdAt, style: .date)
+                                .font(.headline)
+                            Text(snapshot.createdAt, style: .time)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Text("\(snapshot.segments.count) segments - \(formattedDuration(snapshot.totalDuration))")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                        .padding(.vertical, 4)
+                        .tag(SidebarSelection.snapshot(snapshot.id))
+                        .contextMenu {
+                            Button("Delete", role: .destructive) {
+                                appState.snapshotManager.deleteSnapshot(snapshot)
+                            }
+                        }
                     }
                 }
             }
             .navigationTitle("Snapshots")
         } detail: {
-            if let id = selectedSnapshotID,
-               let snapshot = appState.snapshotManager.snapshots.first(where: { $0.id == id }) {
-                SnapshotDetailView(snapshot: snapshot)
+            switch selection {
+            case .liveBuffer:
+                LiveBufferDetailView()
                     .environmentObject(appState)
-                    .id(snapshot.id)
-            } else {
+            case .snapshot(let id):
+                if let snapshot = appState.snapshotManager.snapshots.first(where: { $0.id == id }) {
+                    SnapshotDetailView(snapshot: snapshot)
+                        .environmentObject(appState)
+                        .id(snapshot.id)
+                } else {
+                    Text("Select a snapshot to view")
+                        .foregroundStyle(.secondary)
+                }
+            case nil:
                 Text("Select a snapshot to view")
                     .foregroundStyle(.secondary)
             }

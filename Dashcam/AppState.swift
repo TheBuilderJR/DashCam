@@ -113,8 +113,7 @@ final class AppState: ObservableObject {
                 Task.detached { [weak self] in
                     try? await Task.sleep(nanoseconds: 1_000_000_000) // 1s
                     guard let self else { return }
-                    _ = self.ringBufferManager.flushAndGetSegments()
-                    self.ringBufferManager.resume()
+                    _ = self.ringBufferManager.flushAndResume()
                 }
             } catch is ScreenRecorderError {
                 statusText = "Grant Screen Recording in System Settings, then restart"

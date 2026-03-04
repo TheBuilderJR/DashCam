@@ -111,6 +111,17 @@ final class RingBufferManager {
         }
     }
 
+    /// Atomically flush the current segment, enumerate all segments, and start a new one.
+    /// Returns all buffer segments (including the just-flushed one).
+    func flushAndResume() -> [SegmentInfo] {
+        writerQueue.sync {
+            finalizeCurrentSegment()
+            let segments = enumerateSegments()
+            try? startNewSegment()
+            return segments
+        }
+    }
+
     // MARK: - Private
 
     private func _appendVideoSample(_ pixelBuffer: CVPixelBuffer, presentationTime: CMTime) {

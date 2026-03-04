@@ -86,6 +86,52 @@ final class SnapshotManager: ObservableObject {
         }
     }
 
+    /// Create a snapshot by copying segments from the buffer directory without deleting them.
+    func createSnapshotFromBufferSegments(_ segments: [SegmentInfo]) -> Snapshot? {
+        let nonEmpty = segments.filter { $0.duration > 0 }
+        guard !nonEmpty.isEmpty else { return nil }
+
+        let snapshotID = UUID()
+        let snapshotDir = Self.snapshotsDirectory.appendingPathComponent(snapshotID.uuidString)
+
+        do {
+            try fm.createDirectory(at: snapshotDir, withIntermediateDirectories: true)
+
+            for segment in nonEmpty {
+                let srcMov = RingBufferManager.bufferDirectory.appendingPathComponent(segment.filename)
+                let dstMov = snapshotDir.appendingPathComponent(segment.filename)
+                try fm.copyItem(at: srcMov, to: dstMov)
+
+                let srcJSON = RingBufferManager.bufferDirectory.appendingPathComponent(segment.sidecarFilename)
+                let dstJSON = snapshotDir.appendingPathComponent(segment.sidecarFilename)
+                if fm.fileExists(atPath: srcJSON.path) {
+                    try fm.copyItem(at: srcJSON, to: dstJSON)
+                }
+            }
+
+            let snapshot = Snapshot(id: snapshotID, createdAt: Date(), segments: nonEmpty)
+
+            let manifest = SnapshotManifest(
+                snapshotID: snapshotID,
+                createdAt: snapshot.createdAt,
+                segments: nonEmpty,
+                totalDuration: snapshot.totalDuration
+            )
+            let manifestData = try JSONEncoder().encode(manifest)
+            try manifestData.write(to: snapshotDir.appendingPathComponent("manifest.json"))
+
+            DispatchQueue.main.async {
+                self.snapshots.insert(snapshot, at: 0)
+            }
+            print("[SnapshotManager] Created snapshot from buffer segments \(snapshotID)")
+            return snapshot
+        } catch {
+            print("[SnapshotManager] Failed to create snapshot from buffer: \(error)")
+            try? fm.removeItem(at: snapshotDir)
+            return nil
+        }
+    }
+
     func deleteSnapshot(_ snapshot: Snapshot) {
         let dir = Self.snapshotsDirectory.appendingPathComponent(snapshot.id.uuidString)
         try? fm.removeItem(at: dir)

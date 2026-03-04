@@ -7,47 +7,12 @@ final class VideoExporter: ObservableObject {
     @Published var progress: Double = 0
 
     func export(snapshot: Snapshot, completion: @escaping (Result<URL, Error>) -> Void) {
-        let composition = AVMutableComposition()
-        guard let videoTrack = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid)
-        else {
+        guard let composition = CompositionBuilder.buildExportComposition(
+            segments: snapshot.segments,
+            directory: snapshot.directory
+        ) else {
             completion(.failure(ExportError.compositionFailed))
             return
-        }
-
-        // Lazily created composition audio tracks — one per source track index
-        var compositionAudioTracks: [AVMutableCompositionTrack] = []
-
-        var currentTime = CMTime.zero
-
-        for segment in snapshot.segments {
-            let url = snapshot.directory.appendingPathComponent(segment.filename)
-            let asset = AVURLAsset(url: url)
-
-            do {
-                // Use the video track's actual time range to skip any leading gap
-                // caused by absolute PTS offset in the .mov container
-                guard let srcVideo = asset.tracks(withMediaType: .video).first else { continue }
-                let timeRange = srcVideo.timeRange
-                guard timeRange.duration > .zero else { continue }
-
-                try videoTrack.insertTimeRange(timeRange, of: srcVideo, at: currentTime)
-
-                let audioTracks = asset.tracks(withMediaType: .audio)
-                for (index, srcAudio) in audioTracks.enumerated() {
-                    // Grow composition audio tracks as needed
-                    while compositionAudioTracks.count <= index {
-                        guard let newTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid) else {
-                            continue
-                        }
-                        compositionAudioTracks.append(newTrack)
-                    }
-                    try compositionAudioTracks[index].insertTimeRange(timeRange, of: srcAudio, at: currentTime)
-                }
-
-                currentTime = CMTimeAdd(currentTime, timeRange.duration)
-            } catch {
-                print("[VideoExporter] Failed to insert segment: \(error)")
-            }
         }
 
         // Show save panel

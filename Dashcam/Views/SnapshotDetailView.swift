@@ -124,32 +124,11 @@ struct SnapshotDetailView: View {
     }
 
     private func setupPlayer() {
-        let composition = AVMutableComposition()
-        var insertTime = CMTime.zero
-
-        for segment in snapshot.segments {
-            let url = snapshot.directory.appendingPathComponent(segment.filename)
-            guard FileManager.default.fileExists(atPath: url.path) else { continue }
-            let asset = AVURLAsset(url: url)
-            // Use the video track's actual time range to skip any leading gap
-            // caused by absolute PTS offset in the .mov container
-            guard let videoTrack = asset.tracks(withMediaType: .video).first else { continue }
-            let timeRange = videoTrack.timeRange
-            guard timeRange.duration > .zero else { continue }
-            do {
-                try composition.insertTimeRange(
-                    timeRange,
-                    of: asset,
-                    at: insertTime
-                )
-                insertTime = CMTimeAdd(insertTime, timeRange.duration)
-            } catch {
-                continue
-            }
-        }
-
-        guard insertTime > .zero else {
-            playerReady = true  // Stop showing "Loading...", body will show "No video segments"
+        guard let composition = CompositionBuilder.buildComposition(
+            segments: snapshot.segments,
+            directory: snapshot.directory
+        ) else {
+            playerReady = true
             return
         }
         let avPlayer = AVPlayer(playerItem: AVPlayerItem(asset: composition))
