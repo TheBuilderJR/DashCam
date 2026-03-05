@@ -24,6 +24,7 @@ struct SnapshotDetailView: View {
     @State private var playerReady = false
     @State private var exportMessage: String?
     @State private var clipboardEvents: [ClipboardEvent] = []
+    @State private var keystrokeEvents: [KeystrokeEvent] = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -95,6 +96,30 @@ struct SnapshotDetailView: View {
                         Text(event.content)
                             .font(.system(.caption, design: .monospaced))
                             .lineLimit(3)
+                            .textSelection(.enabled)
+                    }
+                }
+                .frame(minHeight: 120)
+            }
+
+            // Keystroke events
+            if !keystrokeGroups.isEmpty {
+                Divider()
+
+                Text("Keystrokes (\(keystrokeEvents.count))")
+                    .font(.caption.bold())
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+
+                List(keystrokeGroups, id: \.timestamp) { group in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(group.timestamp.formatted(date: .omitted, time: .standard))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Text(group.text)
+                            .font(.system(.caption, design: .monospaced))
+                            .textSelection(.enabled)
                     }
                 }
                 .frame(minHeight: 120)
@@ -111,16 +136,49 @@ struct SnapshotDetailView: View {
         }
     }
 
+    struct KeystrokeGroup: Hashable {
+        let timestamp: Date
+        let text: String
+    }
+
+    private var keystrokeGroups: [KeystrokeGroup] {
+        Self.groupKeystrokes(keystrokeEvents)
+    }
+
+    static func groupKeystrokes(_ events: [KeystrokeEvent], debounceInterval: TimeInterval = 60) -> [KeystrokeGroup] {
+        guard !events.isEmpty else { return [] }
+        var groups: [(timestamp: Date, chars: String)] = []
+        var lastTimestamp: Date? = nil
+        for event in events {
+            guard let typed = event.typedCharacter else { continue }
+            if let last = lastTimestamp,
+               event.timestamp.timeIntervalSince(last) > debounceInterval {
+                groups.append((timestamp: event.timestamp, chars: typed))
+            } else if groups.isEmpty {
+                groups.append((timestamp: event.timestamp, chars: typed))
+            } else {
+                groups[groups.count - 1].chars.append(typed)
+            }
+            lastTimestamp = event.timestamp
+        }
+        return groups
+            .map { KeystrokeGroup(timestamp: $0.timestamp, text: $0.chars.trimmingCharacters(in: .whitespacesAndNewlines)) }
+            .filter { !$0.text.isEmpty }
+    }
+
     private func loadSidecarData() {
         var allClipboard: [ClipboardEvent] = []
+        var allKeystrokes: [KeystrokeEvent] = []
         for segment in snapshot.segments {
             let sidecarURL = snapshot.directory.appendingPathComponent(segment.sidecarFilename)
             guard let data = try? Data(contentsOf: sidecarURL),
                   let sidecar = try? JSONDecoder().decode(SegmentSidecar.self, from: data)
             else { continue }
             allClipboard.append(contentsOf: sidecar.clipboardEvents)
+            allKeystrokes.append(contentsOf: sidecar.keystrokeEvents)
         }
         clipboardEvents = allClipboard.sorted { $0.timestamp < $1.timestamp }
+        keystrokeEvents = allKeystrokes.sorted { $0.timestamp < $1.timestamp }
     }
 
     private func setupPlayer() {

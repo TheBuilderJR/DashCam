@@ -9,6 +9,8 @@ struct LiveBufferDetailView: View {
     @State private var isLoading = false
     @State private var segments: [SegmentInfo] = []
     @State private var saveMessage: String?
+    @State private var clipboardEvents: [ClipboardEvent] = []
+    @State private var keystrokeEvents: [KeystrokeEvent] = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -60,6 +62,53 @@ struct LiveBufferDetailView: View {
                 }
             }
             .padding()
+
+            // Clipboard events
+            if !clipboardEvents.isEmpty {
+                Divider()
+
+                Text("Clipboard (\(clipboardEvents.count))")
+                    .font(.caption.bold())
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+
+                List(clipboardEvents) { event in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(event.timestamp.formatted(date: .omitted, time: .standard))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Text(event.content)
+                            .font(.system(.caption, design: .monospaced))
+                            .lineLimit(3)
+                            .textSelection(.enabled)
+                    }
+                }
+                .frame(minHeight: 120)
+            }
+
+            // Keystroke events
+            if !keystrokeGroups.isEmpty {
+                Divider()
+
+                Text("Keystrokes (\(keystrokeEvents.count))")
+                    .font(.caption.bold())
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+
+                List(keystrokeGroups, id: \.timestamp) { group in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(group.timestamp.formatted(date: .omitted, time: .standard))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Text(group.text)
+                            .font(.system(.caption, design: .monospaced))
+                            .textSelection(.enabled)
+                    }
+                }
+                .frame(minHeight: 120)
+            }
         }
         .onAppear {
             loadBuffer()
@@ -69,6 +118,10 @@ struct LiveBufferDetailView: View {
             player = nil
             playerReady = false
         }
+    }
+
+    private var keystrokeGroups: [SnapshotDetailView.KeystrokeGroup] {
+        SnapshotDetailView.groupKeystrokes(keystrokeEvents)
     }
 
     private var totalDuration: TimeInterval {
@@ -88,8 +141,22 @@ struct LiveBufferDetailView: View {
                 directory: RingBufferManager.bufferDirectory
             )
 
+            // Load sidecar data from buffer segments
+            var allClipboard: [ClipboardEvent] = []
+            var allKeystrokes: [KeystrokeEvent] = []
+            for segment in segs {
+                let sidecarURL = RingBufferManager.bufferDirectory.appendingPathComponent(segment.sidecarFilename)
+                guard let data = try? Data(contentsOf: sidecarURL),
+                      let sidecar = try? JSONDecoder().decode(SegmentSidecar.self, from: data)
+                else { continue }
+                allClipboard.append(contentsOf: sidecar.clipboardEvents)
+                allKeystrokes.append(contentsOf: sidecar.keystrokeEvents)
+            }
+
             await MainActor.run {
                 segments = segs
+                clipboardEvents = allClipboard.sorted { $0.timestamp < $1.timestamp }
+                keystrokeEvents = allKeystrokes.sorted { $0.timestamp < $1.timestamp }
                 if let composition {
                     let avPlayer = AVPlayer(playerItem: AVPlayerItem(asset: composition))
                     player = avPlayer

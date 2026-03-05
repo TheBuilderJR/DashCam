@@ -16,7 +16,7 @@ struct MenuBarView: View {
             }
 
             // Permissions
-            if !appState.allPermissionsGranted {
+            if !appState.allPermissionsGranted || !appState.accessibilityGranted {
                 Divider()
                 VStack(alignment: .leading, spacing: 6) {
                     Label("Permissions Needed", systemImage: "exclamationmark.triangle.fill")
@@ -34,6 +34,13 @@ struct MenuBarView: View {
                         granted: appState.microphoneGranted
                     ) {
                         appState.requestMicrophoneAccess()
+                    }
+                    PermissionRow(
+                        name: "Accessibility",
+                        granted: appState.accessibilityGranted,
+                        hint: "Required for keystroke overlay"
+                    ) {
+                        KeystrokeMonitor.promptAccessibility()
                     }
 
                     Button("Refresh") {
@@ -81,6 +88,20 @@ struct MenuBarView: View {
                     .disabled(appState.isRecording)
                 }
             }
+
+            // Keystroke Overlay
+            Toggle("Keystroke Overlay", isOn: $appState.keystrokeOverlayEnabled)
+                .font(.caption)
+                .disabled(!appState.accessibilityGranted)
+                .onChange(of: appState.keystrokeOverlayEnabled) { _, enabled in
+                    if appState.isRecording {
+                        if enabled {
+                            appState.keystrokeOverlay.show()
+                        } else {
+                            appState.keystrokeOverlay.hide()
+                        }
+                    }
+                }
 
             // Snapshot
             HStack {

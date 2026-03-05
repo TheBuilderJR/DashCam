@@ -103,6 +103,12 @@ final class RingBufferManager {
         }
     }
 
+    func addKeystrokeEvent(_ event: KeystrokeEvent) {
+        writerQueue.async { [weak self] in
+            self?.currentSidecar.keystrokeEvents.append(event)
+        }
+    }
+
     /// Flush the current segment and return all existing segment infos.
     func flushAndGetSegments() -> [SegmentInfo] {
         writerQueue.sync {
@@ -315,7 +321,8 @@ final class RingBufferManager {
                 segmentID: segmentID,
                 startTime: startTime,
                 endTime: startTime.addingTimeInterval(ptsDuration),
-                clipboardEvents: sidecar.clipboardEvents
+                clipboardEvents: sidecar.clipboardEvents,
+                keystrokeEvents: sidecar.keystrokeEvents
             )
             let sidecarURL = Self.bufferDirectory.appendingPathComponent("\(segmentID.uuidString).json")
             if let data = try? JSONEncoder().encode(sidecar) {

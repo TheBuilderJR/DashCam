@@ -29,6 +29,24 @@ struct SegmentSidecar: Codable {
     let startTime: Date
     let endTime: Date
     var clipboardEvents: [ClipboardEvent]
+    var keystrokeEvents: [KeystrokeEvent]
+
+    init(segmentID: UUID, startTime: Date, endTime: Date, clipboardEvents: [ClipboardEvent], keystrokeEvents: [KeystrokeEvent] = []) {
+        self.segmentID = segmentID
+        self.startTime = startTime
+        self.endTime = endTime
+        self.clipboardEvents = clipboardEvents
+        self.keystrokeEvents = keystrokeEvents
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        segmentID = try container.decode(UUID.self, forKey: .segmentID)
+        startTime = try container.decode(Date.self, forKey: .startTime)
+        endTime = try container.decode(Date.self, forKey: .endTime)
+        clipboardEvents = try container.decode([ClipboardEvent].self, forKey: .clipboardEvents)
+        keystrokeEvents = try container.decodeIfPresent([KeystrokeEvent].self, forKey: .keystrokeEvents) ?? []
+    }
 }
 
 struct SnapshotManifest: Codable {

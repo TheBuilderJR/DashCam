@@ -23,6 +23,9 @@
 		A10020 /* MicrophoneCapturer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10020 /* MicrophoneCapturer.swift */; };
 		A10021 /* CompositionBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10021 /* CompositionBuilder.swift */; };
 		A10022 /* LiveBufferDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10022 /* LiveBufferDetailView.swift */; };
+		A10023 /* KeystrokeEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10023 /* KeystrokeEvent.swift */; };
+		A10024 /* KeystrokeMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10024 /* KeystrokeMonitor.swift */; };
+		A10025 /* KeystrokeOverlayWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10025 /* KeystrokeOverlayWindow.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -44,6 +47,9 @@
 		B10020 /* MicrophoneCapturer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicrophoneCapturer.swift; sourceTree = "<group>"; };
 		B10021 /* CompositionBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositionBuilder.swift; sourceTree = "<group>"; };
 		B10022 /* LiveBufferDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveBufferDetailView.swift; sourceTree = "<group>"; };
+		B10023 /* KeystrokeEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeystrokeEvent.swift; sourceTree = "<group>"; };
+		B10024 /* KeystrokeMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeystrokeMonitor.swift; sourceTree = "<group>"; };
+		B10025 /* KeystrokeOverlayWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeystrokeOverlayWindow.swift; sourceTree = "<group>"; };
 		P10001 /* Dashcam.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Dashcam.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -91,6 +97,7 @@
 				B10008 /* VideoExporter.swift */,
 				B10020 /* MicrophoneCapturer.swift */,
 				B10021 /* CompositionBuilder.swift */,
+				B10024 /* KeystrokeMonitor.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -100,6 +107,7 @@
 			children = (
 				B10009 /* Snapshot.swift */,
 				B10011 /* ClipboardEvent.swift */,
+				B10023 /* KeystrokeEvent.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -111,6 +119,7 @@
 				B10013 /* SnapshotListView.swift */,
 				B10014 /* SnapshotDetailView.swift */,
 				B10022 /* LiveBufferDetailView.swift */,
+				B10025 /* KeystrokeOverlayWindow.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -207,6 +216,9 @@
 				A10020 /* MicrophoneCapturer.swift in Sources */,
 				A10021 /* CompositionBuilder.swift in Sources */,
 				A10022 /* LiveBufferDetailView.swift in Sources */,
+				A10023 /* KeystrokeEvent.swift in Sources */,
+				A10024 /* KeystrokeMonitor.swift in Sources */,
+				A10025 /* KeystrokeOverlayWindow.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

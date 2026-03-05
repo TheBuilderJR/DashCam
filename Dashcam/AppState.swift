@@ -21,6 +21,8 @@ final class AppState: ObservableObject {
 
     @Published var screenRecordingGranted = false
     @Published var microphoneGranted = false
+    @Published var accessibilityGranted = false
+    @Published var keystrokeOverlayEnabled: Bool = true
 
     var allPermissionsGranted: Bool {
         screenRecordingGranted && microphoneGranted
@@ -30,6 +32,7 @@ final class AppState: ObservableObject {
         screenRecordingGranted = CGPreflightScreenCaptureAccess()
         let status = AVCaptureDevice.authorizationStatus(for: .audio)
         microphoneGranted = status == .authorized
+        accessibilityGranted = KeystrokeMonitor.isAccessibilityGranted
         refreshMicrophones()
     }
 
@@ -69,6 +72,8 @@ final class AppState: ObservableObject {
     let screenRecorder = ScreenRecorder()
     let ringBufferManager = RingBufferManager()
     let clipboardMonitor = ClipboardMonitor()
+    let keystrokeMonitor = KeystrokeMonitor()
+    let keystrokeOverlay = KeystrokeOverlayWindow()
     let snapshotManager = SnapshotManager()
     let videoExporter = VideoExporter()
     let microphoneCapturer = MicrophoneCapturer()
@@ -87,10 +92,23 @@ final class AppState: ObservableObject {
                     self?.ringBufferManager.addClipboardEvent(event)
                 }
 
+                keystrokeMonitor.onKeystroke = { [weak self] event in
+                    self?.ringBufferManager.addKeystrokeEvent(event)
+                    if self?.keystrokeOverlayEnabled == true {
+                        DispatchQueue.main.async {
+                            self?.keystrokeOverlay.addKeystroke(event)
+                        }
+                    }
+                }
+
                 // Start services
                 try ringBufferManager.start()
                 try await screenRecorder.start()
                 clipboardMonitor.start()
+                keystrokeMonitor.start()
+                if keystrokeOverlayEnabled {
+                    keystrokeOverlay.show()
+                }
 
                 // Start microphone capture if enabled
                 if captureMicrophone {
@@ -130,6 +148,8 @@ final class AppState: ObservableObject {
             await screenRecorder.stop()
             ringBufferManager.stop()
             clipboardMonitor.stop()
+            keystrokeMonitor.stop()
+            keystrokeOverlay.hide()
 
             isRecording = false
             statusText = "Stopped"
